@@ -1,8 +1,14 @@
+import java.io.File;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.security.KeyFactory;
+import java.security.PrivateKey;
+import java.security.Signature;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.text.MessageFormat;
 import javax.servlet.ServletException;
 import javax.servlet.http.*;
 
@@ -16,7 +22,9 @@ public class SalesforceDashboard extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
 
-        String secrets = System.getenv().get("SECRET_STUFF");
+//        String secrets = System.getenv().get("SECRET_STUFF");
+
+        String secrets = createToken();
         resp.getWriter().print(secrets);
     }
 
@@ -43,7 +51,7 @@ public class SalesforceDashboard extends HttpServlet {
             conn.setConnectTimeout(60*1000);
 
             final String grantType = URLEncoder.encode("urn:ietf:params:oauth:grant-type:jwt-bearer", "UTF-8");
-            final String token = URLEncoder.encode(createToken());
+            final String token = URLEncoder.encode(createToken(), "UTF-8");
 
 
             return "";
@@ -57,21 +65,54 @@ public class SalesforceDashboard extends HttpServlet {
 
     private String createToken() {
 
-        String header = "(\"alg\":\"RS256\"}";
-        String claimTemplate = "'{'\"iss\": \"{0}\", \"prn\": \"{1}\", \"aud\": \"{2}\", \"exp\": \"{3}\"'}'";
+        final String header = "(\"alg\":\"RS256\"}";
+        final String claimTemplate = "'{'\"iss\": \"{0}\", \"prn\": \"{1}\", \"aud\": \"{2}\", \"exp\": \"{3}\"'}'";
 
         try {
-            StringBuffer token = new StringBuffer();
+            final StringBuilder token = new StringBuilder();
 
             //Encode the JWT Header and add it to our string to sign
-            token.append(org.apache.commons.codec.binary.Base64.encodeBase64URLSafeString(header.getBytes("UTF-8")));
+            token.append(Base64.encodeBase64URLSafeString(header.getBytes("UTF-8")));
             token.append('.');
+
+            final String[] claimArray = new String[4];
+            claimArray[0] = System.getenv().get("SECRET_KEY");
+            claimArray[1] = System.getenv().get("USER_NAME");
+            claimArray[2] = System.getenv().get("LOGIN_PATH");
+            claimArray[3] = Long.toString( (System.currentTimeMillis()/1000) + 300);
+
+            final MessageFormat claims = new MessageFormat(claimTemplate);
+            final String payload = claims.format(claimArray);
+
+            // Add the encoded claims object
+            token.append(Base64.encodeBase64URLSafeString(payload.getBytes("UTF-8")));
+
+            final String privateKeyString = System.getenv().get("PRIVATE_KEY");
+            System.out.println(privateKeyString);
+
+            Base64 b64PK = new Base64();
+            byte [] decoded = b64PK.decode(privateKeyString);
+
+            PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(decoded);
+
+            PrivateKey pk = KeyFactory.getInstance("RSA").generatePrivate(spec);
+
+            // should have a PrivateKey at this point, unless that was just gibberish...
+            // Sign the JWT Header + "." + JWT Claims object
+            Signature sig = Signature.getInstance("SHA256withRSA");
+            sig.initSign(pk);
+            sig.update(token.toString().getBytes("UTF-8"));
+            String signedPayload = Base64.encodeBase64URLSafeString(sig.sign());
+
+            token.append(".");
+
+            token.append(signedPayload);
+
+            return token.toString();
 
         } catch (Exception e) {
             System.err.println(e.getMessage());
             return null;
         }
-
-        return null;
     }
 }
