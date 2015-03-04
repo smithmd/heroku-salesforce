@@ -1,5 +1,4 @@
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -24,7 +23,7 @@ public class SalesforceDashboard extends HttpServlet {
 
 //        String secrets = System.getenv().get("SECRET_STUFF");
 
-        String secrets = createToken();
+        String secrets = requestAccessToken();
         resp.getWriter().print(secrets);
     }
 
@@ -39,26 +38,57 @@ public class SalesforceDashboard extends HttpServlet {
     }
 
     public String requestAccessToken() {
+        StringBuilder response = new StringBuilder();
 
         try {
-            final URL url = new URL("https://test.salesforce.com/services/oauth2/token");
-            final HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-
-            conn.setRequestMethod("POST");
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-            conn.setRequestProperty("Accept-Language", "en-US,en;q=0.5");
-            conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-            conn.setConnectTimeout(60*1000);
+            URL url = new URL("https://test.salesforce.com/services/oauth2/token");
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            //add request header
+            con.setRequestMethod("POST");
+            con.setRequestProperty("User-Agent", "Mozilla/5.0");
+            con.setRequestProperty("Accept-Language", "en-US,en;q=0.5");
+            con.setRequestProperty("Content-Type","application/x-www-form-urlencoded");
+            con.setConnectTimeout(60*1000);
 
             final String grantType = URLEncoder.encode("urn:ietf:params:oauth:grant-type:jwt-bearer", "UTF-8");
             final String token = URLEncoder.encode(createToken(), "UTF-8");
+            final String urlParameters = "grant_type=" + grantType + "&assertion=" + token;
 
+            System.out.println("URL Parameters: " + urlParameters);
 
-            return "";
+            con.setDoOutput(true);
+            DataOutputStream wr = new DataOutputStream(con.getOutputStream());
+            wr.writeBytes(urlParameters);
+            wr.flush();
+            wr.close();
+
+            int responseCode = con.getResponseCode();
+
+            System.out.println("\n Sending POST to request URL: " + url);
+            System.out.println("Post parameters : " + urlParameters);
+            System.out.println("Response Code : " + responseCode);
+            System.out.println(con.getResponseMessage());
+            System.out.println(con.toString());
+
+            BufferedReader in = new BufferedReader(
+                    new InputStreamReader(con.getInputStream())
+            );
+
+            String inputLine;
+
+            while((inputLine = in.readLine()) != null) {
+                response.append(inputLine);
+            }
+
+            in.close();
+
+            System.out.println(response);
+
+            return response.toString();
         } catch (MalformedURLException e) {
             return "MalformedURLException: " + e.getMessage();
         } catch (IOException e) {
-            return "IOException: " + e.getMessage();
+            return "IOException: " + e.getMessage() + "\nResponse:\n" + response.toString();
         }
 
     }
@@ -88,7 +118,7 @@ public class SalesforceDashboard extends HttpServlet {
             token.append(Base64.encodeBase64URLSafeString(payload.getBytes("UTF-8")));
 
             final String privateKeyString = System.getenv().get("PRIVATE_KEY");
-            System.out.println(privateKeyString);
+//            System.out.println(privateKeyString);
 
             Base64 b64PK = new Base64();
             byte [] decoded = b64PK.decode(privateKeyString);
