@@ -8,12 +8,21 @@ import java.security.PrivateKey;
 import java.security.Signature;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.List;
 import javax.servlet.ServletException;
 import javax.servlet.http.*;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.message.BasicNameValuePair;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.*;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.http.NameValuePair;
 
 public class SalesforceDashboard extends HttpServlet {
 
@@ -39,39 +48,59 @@ public class SalesforceDashboard extends HttpServlet {
 
     public String requestAccessToken() {
         StringBuilder response = new StringBuilder();
+        final String tokenURL = System.getenv().get("TOKEN_URL");
+        HttpClient client = HttpClientBuilder.create().build();
+        HttpPost post = new HttpPost(tokenURL);
 
         try {
-            URL url = new URL("https://test.salesforce.com/services/oauth2/token");
-            HttpURLConnection con = (HttpURLConnection) url.openConnection();
-            //add request header
-            con.setRequestMethod("POST");
-            con.setRequestProperty("User-Agent", "Mozilla/5.0");
-            con.setRequestProperty("Accept-Language", "en-US,en;q=0.5");
-            con.setRequestProperty("Content-Type","application/x-www-form-urlencoded");
-            con.setConnectTimeout(60*1000);
+            List<NameValuePair> pairs = new ArrayList<NameValuePair>();
 
             final String grantType = URLEncoder.encode("urn:ietf:params:oauth:grant-type:jwt-bearer", "UTF-8");
+            pairs.add(new BasicNameValuePair("grant_type", grantType));
+
             final String token = URLEncoder.encode(createToken(), "UTF-8");
-            final String urlParameters = "grant_type=" + grantType + "&assertion=" + token;
+            pairs.add(new BasicNameValuePair("assertion", token));
 
-            System.out.println("URL Parameters: " + urlParameters);
+            post.setEntity(new UrlEncodedFormEntity(pairs));
 
-            con.setDoOutput(true);
-            DataOutputStream wr = new DataOutputStream(con.getOutputStream());
-            wr.writeBytes(urlParameters);
-            wr.flush();
-            wr.close();
+            HttpResponse resp = client.execute(post);
 
-            int responseCode = con.getResponseCode();
 
-            System.out.println("\n Sending POST to request URL: " + url);
-            System.out.println("Post parameters : " + urlParameters);
-            System.out.println("Response Code : " + responseCode);
-            System.out.println(con.getResponseMessage());
-            System.out.println(con.toString());
+
+
+
+
+//            URL url = new URL("https://test.salesforce.com/services/oauth2/token");
+//            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+//            //add request header
+//            con.setRequestMethod("POST");
+//            con.setRequestProperty("User-Agent", "Mozilla/5.0");
+//            con.setRequestProperty("Accept-Language", "en-US,en;q=0.5");
+//            con.setRequestProperty("Content-Type","application/x-www-form-urlencoded");
+//            con.setConnectTimeout(60*1000);
+//
+//            final String urlParameters = "grant_type=" + grantType + "&assertion=" + token;
+//
+//
+//
+//            System.out.println("URL Parameters: " + urlParameters);
+//
+//            con.setDoOutput(true);
+//            DataOutputStream wr = new DataOutputStream(con.getOutputStream());
+//            wr.writeBytes(urlParameters);
+//            wr.flush();
+//            wr.close();
+//
+//            int responseCode = con.getResponseCode();
+//
+//            System.out.println("\nSending POST to request URL: " + tokenURL);
+//            System.out.println("Post parameters : " + urlParameters);
+//            System.out.println("Response Code : " + responseCode);
+//            System.out.println(con.getResponseMessage());
+//            System.out.println(con.toString());
 
             BufferedReader in = new BufferedReader(
-                    new InputStreamReader(con.getInputStream())
+                    new InputStreamReader(resp.getEntity().getContent())
             );
 
             String inputLine;
