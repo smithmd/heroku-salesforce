@@ -1,8 +1,7 @@
 import java.io.*;
-import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.net.URL;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.Signature;
@@ -30,8 +29,6 @@ public class SalesforceDashboard extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
 
-//        String secrets = System.getenv().get("SECRET_STUFF");
-
         String secrets = requestAccessToken();
         resp.getWriter().print(secrets);
     }
@@ -50,54 +47,34 @@ public class SalesforceDashboard extends HttpServlet {
         StringBuilder response = new StringBuilder();
         final String tokenURL = System.getenv().get("TOKEN_URL");
         HttpClient client = HttpClientBuilder.create().build();
-        HttpPost post = new HttpPost(tokenURL);
 
         try {
+            // POST contents
+            final String grantType = "urn:ietf:params:oauth:grant-type:jwt-bearer";
+            final String token = createToken();
+
+//            final String params = "?grant_type="+grantType+"&assertion="+token;
+
+            HttpPost post = new HttpPost(tokenURL);//+params);
+
+            // Add Headers
+            post.addHeader("Content-Type","application/x-www-form-urlencoded");
+            post.addHeader("User-Agent", "Mozilla/5.0");
+            post.addHeader("Accept-Language", "en-US,en;q=0.5");
+
+
+            // Add post data
             List<NameValuePair> pairs = new ArrayList<NameValuePair>();
-
-            final String grantType = URLEncoder.encode("urn:ietf:params:oauth:grant-type:jwt-bearer", "UTF-8");
             pairs.add(new BasicNameValuePair("grant_type", grantType));
-
-            final String token = URLEncoder.encode(createToken(), "UTF-8");
             pairs.add(new BasicNameValuePair("assertion", token));
+            UrlEncodedFormEntity entity = new UrlEncodedFormEntity(pairs, StandardCharsets.UTF_8);
+            post.setEntity(entity);
 
-            post.setEntity(new UrlEncodedFormEntity(pairs));
+
+            System.out.println(post.toString());
+//            System.out.println(post.getEntity().toString());
 
             HttpResponse resp = client.execute(post);
-
-
-
-
-
-
-//            URL url = new URL("https://test.salesforce.com/services/oauth2/token");
-//            HttpURLConnection con = (HttpURLConnection) url.openConnection();
-//            //add request header
-//            con.setRequestMethod("POST");
-//            con.setRequestProperty("User-Agent", "Mozilla/5.0");
-//            con.setRequestProperty("Accept-Language", "en-US,en;q=0.5");
-//            con.setRequestProperty("Content-Type","application/x-www-form-urlencoded");
-//            con.setConnectTimeout(60*1000);
-//
-//            final String urlParameters = "grant_type=" + grantType + "&assertion=" + token;
-//
-//
-//
-//            System.out.println("URL Parameters: " + urlParameters);
-//
-//            con.setDoOutput(true);
-//            DataOutputStream wr = new DataOutputStream(con.getOutputStream());
-//            wr.writeBytes(urlParameters);
-//            wr.flush();
-//            wr.close();
-//
-//            int responseCode = con.getResponseCode();
-//
-//            System.out.println("\nSending POST to request URL: " + tokenURL);
-//            System.out.println("Post parameters : " + urlParameters);
-//            System.out.println("Response Code : " + responseCode);
-//            System.out.println(con.getResponseMessage());
-//            System.out.println(con.toString());
 
             BufferedReader in = new BufferedReader(
                     new InputStreamReader(resp.getEntity().getContent())
@@ -124,7 +101,7 @@ public class SalesforceDashboard extends HttpServlet {
 
     private String createToken() {
 
-        final String header = "(\"alg\":\"RS256\"}";
+        final String header = "{\"alg\":\"RS256\"}";
         final String claimTemplate = "'{'\"iss\": \"{0}\", \"prn\": \"{1}\", \"aud\": \"{2}\", \"exp\": \"{3}\"'}'";
 
         try {
@@ -144,7 +121,7 @@ public class SalesforceDashboard extends HttpServlet {
             final String payload = claims.format(claimArray);
 
             // Add the encoded claims object
-            token.append(Base64.encodeBase64URLSafeString(payload.getBytes("UTF-8")));
+            token.append(Base64.encodeBase64URLSafeString(payload.getBytes(StandardCharsets.UTF_8)));
 
             final String privateKeyString = System.getenv().get("PRIVATE_KEY");
 //            System.out.println(privateKeyString);
@@ -160,12 +137,15 @@ public class SalesforceDashboard extends HttpServlet {
             // Sign the JWT Header + "." + JWT Claims object
             Signature sig = Signature.getInstance("SHA256withRSA");
             sig.initSign(pk);
-            sig.update(token.toString().getBytes("UTF-8"));
+            sig.update(token.toString().getBytes(StandardCharsets.UTF_8));
             String signedPayload = Base64.encodeBase64URLSafeString(sig.sign());
 
             token.append(".");
 
             token.append(signedPayload);
+
+            System.out.println("Token:");
+            System.out.println(token);
 
             return token.toString();
 

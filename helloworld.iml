@@ -12,6 +12,7 @@
     <orderEntry type="library" name="org.apache.httpcomponents:httpclient:4.2.1-atlassian-5" level="project" />
     <orderEntry type="library" name="httpclient-4.4" level="project" />
     <orderEntry type="library" name="httpcore-4.4" level="project" />
+    <orderEntry type="library" name="commons-codec-1.9" level="project" />
     <orderEntry type="library" name="Maven: org.eclipse.jetty:jetty-servlet:7.6.0.v20120127" level="project" />
     <orderEntry type="library" name="Maven: org.eclipse.jetty:jetty-security:7.6.0.v20120127" level="project" />
     <orderEntry type="library" name="Maven: org.eclipse.jetty:jetty-server:7.6.0.v20120127" level="project" />
@@ -20,7 +21,8 @@
     <orderEntry type="library" name="Maven: org.eclipse.jetty:jetty-io:7.6.0.v20120127" level="project" />
     <orderEntry type="library" name="Maven: org.eclipse.jetty:jetty-util:7.6.0.v20120127" level="project" />
     <orderEntry type="library" name="Maven: javax.servlet:servlet-api:2.5" level="project" />
-    <orderEntry type="library" name="Maven: commons-codec:commons-codec:1.4" level="project" />
+    <orderEntry type="library" name="Maven: org.apache:commons-codec:1.9" level="project" />
+    <orderEntry type="library" name="Maven: org.apache:commons-logging:1.2" level="project" />
     <orderEntry type="library" name="Maven: org.apache:httpcore:4.4" level="project" />
     <orderEntry type="library" name="Maven: org.apache:httpclient:4.4" level="project" />
   </component>
