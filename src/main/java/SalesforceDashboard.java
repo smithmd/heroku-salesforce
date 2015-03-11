@@ -1,6 +1,5 @@
 import java.io.*;
 import java.net.MalformedURLException;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
@@ -25,9 +24,15 @@ import org.apache.http.NameValuePair;
 
 public class SalesforceDashboard extends HttpServlet {
 
+    private String ENVIRONMENT = "_TEST";
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
+
+        if (System.getenv().get("IS_LIVE").equals("1")) {
+            ENVIRONMENT = "_LIVE";
+        }
 
         String secrets = requestAccessToken();
         resp.getWriter().print(secrets);
@@ -45,7 +50,7 @@ public class SalesforceDashboard extends HttpServlet {
 
     public String requestAccessToken() {
         StringBuilder response = new StringBuilder();
-        final String tokenURL = System.getenv().get("TOKEN_URL");
+        final String tokenURL = System.getenv().get("TOKEN_URL" + ENVIRONMENT);
         HttpClient client = HttpClientBuilder.create().build();
 
         try {
@@ -70,8 +75,7 @@ public class SalesforceDashboard extends HttpServlet {
             UrlEncodedFormEntity entity = new UrlEncodedFormEntity(pairs, StandardCharsets.UTF_8);
             post.setEntity(entity);
 
-
-            System.out.println(post.toString());
+//            System.out.println(post.toString());
 //            System.out.println(post.getEntity().toString());
 
             HttpResponse resp = client.execute(post);
@@ -112,9 +116,9 @@ public class SalesforceDashboard extends HttpServlet {
             token.append('.');
 
             final String[] claimArray = new String[4];
-            claimArray[0] = System.getenv().get("SECRET_KEY");
-            claimArray[1] = System.getenv().get("USER_NAME");
-            claimArray[2] = System.getenv().get("LOGIN_PATH");
+            claimArray[0] = System.getenv().get("SECRET_KEY" + ENVIRONMENT);
+            claimArray[1] = System.getenv().get("USER_NAME" + ENVIRONMENT);
+            claimArray[2] = System.getenv().get("LOGIN_PATH" + ENVIRONMENT);
             claimArray[3] = Long.toString( (System.currentTimeMillis()/1000) + 300);
 
             final MessageFormat claims = new MessageFormat(claimTemplate);
@@ -123,7 +127,7 @@ public class SalesforceDashboard extends HttpServlet {
             // Add the encoded claims object
             token.append(Base64.encodeBase64URLSafeString(payload.getBytes(StandardCharsets.UTF_8)));
 
-            final String privateKeyString = System.getenv().get("PRIVATE_KEY");
+            final String privateKeyString = System.getenv().get("PRIVATE_KEY" + ENVIRONMENT);
 //            System.out.println(privateKeyString);
 
             Base64 b64PK = new Base64();
